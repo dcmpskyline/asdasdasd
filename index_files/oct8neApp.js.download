@@ -1,0 +1,466 @@
+﻿window.oct8neApp = new function () {
+
+    let _public = this;
+    let _options = window.oct8neAppOptions;
+    if (typeof _options !== 'object') throw 'options within window.oct8neAppOptions must be an object';
+
+    // Constructor  ========================
+    let initialize = function () {
+        loadOct8neScript(() => {
+            // Create global variable for the utils. !! IMPORTANT : this variable is required in order for utils to work
+            window.oct8neVtex = { cart: {}, log: function (message) { console.log(message); } };
+            // Start listening to vtex events
+            listenToVtexEvents();
+        });
+    };
+
+    // Public methods ========================
+    _public.getOptions = function () {
+        return window.oct8neAppOptions;
+    };
+
+    _public.getUtilsData = function () {
+        return window.oct8neVtex;
+    };
+
+    let httpGet = function (url, done, mapRet) {
+        // On ready callback
+        var onReady = function (xhttp) {
+            let status = xhttp.status;
+            let responseText = xhttp.responseText;
+            let responseObject = null;
+            try {
+                responseObject = JSON.parse(responseText);
+            } catch (e) { }
+
+            let ret = { status, responseText, responseObject };
+            if (mapRet) {
+                done(mapRet(ret));
+            } else {
+                done(ret);
+            }
+        };
+
+        // Send post
+        var xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function (e) {
+            if (e.target.readyState === 4) onReady(e.target);
+        };
+
+        // Open and send
+        xhttp.open("GET", url, true);
+
+        // Send request
+        xhttp.send();
+    };
+
+    let GetCartInfoById = function (cartId, callback, retMap) {
+        httpGet(BuildGetCartInfoUrl(_options.baseUrl, cartId), callback, retMap);
+    };
+
+    let BuildGetCartInfoUrl = function (url, cartId) {
+        if (!url.endsWith('/'))
+            url = url + '/';
+
+        let regex = /^https?:\/\/([^\/]+)\/.*/;
+        let match = url.match(regex);
+        let ret = url;
+        if (match) {
+            ret=match[1];
+        }
+        url = ret.replace('/', '');
+        if (!url.startsWith('www.')) {
+            urt = 'www.' + url;
+        }
+
+        return 'https://' + url + '/' + 'api/checkout/pub/orderForm/' + cartId;
+    }
+
+    let CartInfoServerResponseMap = function (ret) {
+        if (!ret.responseObject) {
+            return;
+        }
+        let objResult = ret.responseObject;
+        let retItems = objResult.items.map(i => ({
+            productId: i.productId,
+            name: i.name,
+            price: i.sellingPrice,
+            detailUrl: i.detailUrl,
+            imageUrl: i.imageUrl,
+            quantity: i.quantity
+        }));
+        let totalPrice = objResult.items.reduce((acc, i) => acc + (i.sellingPrice * i.quantity), 0);
+        let userProfile = objResult.clientProfileData;
+        let retObj = {
+            items: retItems,
+            currency: objResult.storePreferencesData.currencyCode,
+            totalItems: objResult.items.length,
+            price: totalPrice,
+            userProfile: {
+                email: userProfile ? userProfile.email || '' : '',
+                firstName: userProfile ? userProfile.firstName || '' : '',
+                lastName: userProfile ? userProfile.lastName || '' : ''
+            }                      
+        };
+        return retObj;
+    };
+
+    let _logEvent = () => { };
+    _public.startLoggingEvents = function () {
+        _logEvent = (message) => console.log(message);
+    };
+
+    // Listen to events ========================
+    let listenToVtexEvents = function () {
+        let InternalDebouncedRestart = function (eventTriggerName) {
+            let now = new Date();
+            let lastRestart = _lastRestartDate;
+            let diff = now - lastRestart;
+            if (diff > 1000 && window.location.href !== _lastRestartPage) {
+                window.oct8ne.restart();
+                _lastRestartDate = now;
+                _lastRestartPage = window.location.href;
+                _firstVtexEvent = true;
+                console.log('executed restart for event:', eventTriggerName);
+                
+            } else {
+                console.log('skipped restart for event:', eventTriggerName);
+            }
+        }
+
+        let mapCustomerCart = function (items) {
+            let customerCart = items.map(function (x) {
+                let internalId = x.productId;
+                let title = x.name;
+                let formattedPrice = (x.price / 100).toString();
+                let formattedPrevPrice = formattedPrice;
+                let productUrl = window.location.href + x.detailUrl;
+                let thumbnail = x.imageUrl;
+                let qty = x.quantity;
+
+                let ret = {
+                    internalId: internalId,
+                    title: title,
+                    formattedPrice: formattedPrice,
+                    formattedPrevPrice: formattedPrevPrice,
+                    productUrl: productUrl,
+                    thumbnail: thumbnail,
+                    qty: qty
+                };
+                return ret;
+            });
+
+            return customerCart;
+        };
+
+        let CacheUserDataEvent = function (event) {
+            _userDataCachedEvent = event;
+            window.sessionStorage.setItem('vtex:userDataEvent' + '_' + window.location.origin, JSON.stringify(event));
+        };
+
+        let RecoverUserDataEvent = function () {
+            let userDataEvent = window.sessionStorage.getItem('vtex:userDataEvent' + '_' + window.location.origin);
+            if (userDataEvent !== null) {
+                return JSON.parse(userDataEvent);
+            }
+            return null;
+        };
+
+        let CacheCartDataEvent = function (event) {
+            _cartChangedCachedEvent = event;
+            window.sessionStorage.setItem('vtex:cartDataEvent' + '_' + window.location.origin, JSON.stringify(event));
+        }
+
+        let RecoverCartDataEvent = function () {
+            let cartDataEvent = window.sessionStorage.getItem('vtex:cartDataEvent' + '_' + window.location.origin);
+            if (cartDataEvent !== null) {
+                return JSON.parse(cartDataEvent);
+            }
+            return null;
+        };
+
+        // Vtex events callbacks =======================
+        var pageView = function (eventName) {
+            InternalDebouncedRestart(eventName);
+            if (_userDataCachedEvent && _cartChangedCachedEvent) {
+                cartChanged(_cartChangedCachedEvent);
+            }
+        };
+
+        var productView = function (data) {
+            var product = data.product;
+            var firstItemImage = product.items[0].imageUrl;
+
+            window.oct8ne.currentProduct = { id: product.productId, thumbnail: firstItemImage };
+            oct8neApi.addViewedProducts(window.oct8ne.currentProduct);
+
+            InternalDebouncedRestart('vtex:productView');
+
+            oct8neApi.checkTriggersForSpa();
+        };
+
+        var cartChanged = function (data) {
+            let items = data.items;
+
+            // Map root
+            let price = 0;
+            items.forEach(function (x) {
+                price = price + x.price;
+            });
+
+            let totalItems = 0;
+            items.forEach(function (x) {
+                totalItems = totalItems + x.quantity;
+            });
+
+            var finalPrice = price;
+            var currency = data.currency;
+
+            // Callback to map customer cart
+            
+
+            // Final ojbect for cart cand customer cart
+            let cartData = mapCustomerCart(items);
+            let ret = { price: price, finalPrice: finalPrice, currency: currency, totalItems: totalItems, cart: cartData };
+            window.oct8neVtex.cart = ret;
+            window.oct8neVtex.customerCart = cartData;
+
+            runUserDataEvent("anonimous@oct8ne.com");
+            window.oct8neApi.updateSaleCart();
+
+            var oct8neIframe = document.getElementById(oct8neVars.DOMElements.viewerIframe);
+
+            if (oct8neIframe && oct8neIframe.contentWindow && Oct8ne) {
+                Oct8ne.Helpers.sendPostMessageToOct8ne("CUSTOMERDATARESULT," + JSON.stringify(window.oct8neVtex.cart));
+            }
+        };
+
+        let userData = function (data) {
+            window.oct8ne.options = { vtexioInfo: { customerInfo: null } };
+            if (data === undefined) return;
+
+            let id = data.id;
+            let firstName = data.firstName !== undefined ? data.firstName : data.email;
+            let lastName = data.lastName !== undefined ? data.lastName : data.email;
+            let email = data.email;
+            let wishList = null;
+            let cart = window.oct8neVtex.customerCart;
+
+            let ret = { id: id, firstName: firstName, lastName: lastName, email: email, wishList: wishList, cart: cart };
+            window.oct8ne.options.vtexioInfo.customerInfo = ret;
+            window.oct8ne.options.user = {
+                name: "",
+                email: email
+            };
+        };
+
+        let runUserDataEvent = function (fallbackMail) {
+            if (_userDataCachedEvent !== null) {
+                userData(_userDataCachedEvent);
+            } else {
+                userData({ id: "", email: fallbackMail });
+            }
+        };
+
+        let onCartIdEventHandler = function (eventData) {
+            if (!eventData) {
+                return;
+            }
+            if (!_userDataCachedEvent && eventData.userProfile) {
+                CacheUserDataEvent({
+                    firstName: eventData.userProfile.firstName,
+                    lastname: eventData.userProfile.lastName,
+                    email: eventData.userProfile.email
+                });
+            }
+
+            CacheCartDataEvent(eventData);
+            cartChanged(_cartChangedCachedEvent);
+        };
+
+        let onOrderPlacedEventHandler = function (eventData) {
+            if (!eventData)
+                return;
+            removeExistingPixelSaleScript();
+            loadPixelSale(eventData);
+        };
+
+        let removeExistingPixelSaleScript = function () {
+            var existingPixelScript = document.getElementById('oct8ne-sale-notification');
+            if (existingPixelScript !== null) {
+                existingPixelScript.remove();
+            }
+        };
+
+        let loadPixelSale = function (eventdata) {
+            // Get order. Do nothing if it is not there
+            var order = eventdata;
+            if (typeof order !== 'object') return;
+
+            // Do nothing if script is already loaded
+            var existingPixelScript = document.getElementById('oct8ne-sale-notification');
+            if (existingPixelScript !== null) {
+                console.warn('Do not load sale notification script since it was already there');
+                return;
+            }
+
+            // Get stuff from config and page            
+            var license = _options.licenseId;
+            var static = _options.srcStaticPart;
+            var locale = _options.locale;
+            var currency = order.currency;
+
+            // Get order stuff
+            var reference = (order.ordersInOrderGroup && order.ordersInOrderGroup.length > 0) ? order.ordersInOrderGroup[0] : "";
+            if (reference === "")
+                return;
+
+            var value = order.transactionTotal + currency;
+            var customerId = null;
+            //if (customerId === undefined) customerId = null;
+
+            // Load pixel
+            let pixelScript = document.createElement('script');
+            var url = 'https://{static}' + '/api/source/js/ext/sale-notification.js?license={license}&CurrencyCode={CurrencyCode}&locale={locale}&value={value}&reference={reference}&customerId={customerId}';
+            var actualUrl = url
+                .replace('{static}', static)
+                .replace('{license}', license)
+                .replace('{CurrencyCode}', currency)
+                .replace('{locale}', locale)
+                .replace('{value}', value)
+                .replace('{reference}', reference)
+                .replace('{customerId}', customerId);
+
+            pixelScript.src = actualUrl;
+            pixelScript.id = 'oct8ne-sale-notification';
+            pixelScript.type = 'text/javascript';
+            document.head.append(pixelScript);
+        };
+
+        let UpdateCartIfFirstVtexEvent = function () {
+            if (_firstVtexEvent && _cartChangedCachedEvent) {
+                cartChanged(_cartChangedCachedEvent);
+            }
+        };
+
+        let handleVtexEvent = function (event) {
+            let eventName = event.eventName;
+            // TODO remove before production, debugging only
+            if (eventName && eventName.includes('vtex:')) {
+                console.log('Vtex Event', eventName);
+            }
+            switch (eventName) {
+                case 'vtex:pageView':
+                    _logEvent({ eventName, event });
+                    pageView(eventName);
+                    break;
+
+                case 'vtex:productView':
+                    _logEvent({ eventName, event });                    
+                    productView(event);
+                    break;
+
+                case 'vtex:cartChanged':
+                    _logEvent({ eventName, event });
+                    CacheCartDataEvent(event);
+                    cartChanged(event);
+                    InternalDebouncedRestart(eventName);
+                    break;
+
+                case 'vtex:userData':
+                    if (event.email) {
+                        CacheUserDataEvent(event);
+                        userData(event);
+                    }
+                    _logEvent({ eventName, event });
+                    break;
+                case 'vtex:cartId':
+                    console.log(eventName);
+                    // force Get cart info by id if not cached userdata or cart data, the cartInfo also has userProfileInfo 
+                    if (!_cartChangedCachedEvent || !_userDataCachedEvent) {                        
+                        GetCartInfoById(event.cartId, onCartIdEventHandler, CartInfoServerResponseMap);
+                    } else {
+                        onCartIdEventHandler(_cartChangedCachedEvent);
+                    }
+                    break;
+
+                case 'vtex:addToCart':
+                    console.log(eventName);
+                    if (_cartChangedCachedEvent) {
+                        _cartChangedCachedEvent.items = [..._cartChangedCachedEvent.items, ...event.items];
+                        onCartIdEventHandler(_cartChangedCachedEvent);
+                    }
+                    break;  
+                case 'vtex:orderPlaced':
+                    console.log(eventName);
+                    console.log(event);                    
+                    onOrderPlacedEventHandler(event);
+                    break;
+
+            }
+            if (_firstVtexEvent && eventName && eventName.includes('vtex:')) {
+                UpdateCartIfFirstVtexEvent();
+                _firstVtexEvent = false;
+                console.log('Vtex Event', eventName);
+            }
+        };
+
+        let _userDataCachedEvent = RecoverUserDataEvent();
+        let _cartChangedCachedEvent = RecoverCartDataEvent();
+        let _lastRestartDate = new Date();
+        let _lastRestartPage = window.location.href;
+        let _firstVtexEvent = true;
+
+        window.addEventListener('message', function (e) {
+            let vtexEvent = e.data;
+            handleVtexEvent(vtexEvent);
+        });
+    };
+
+    // Private methods ========================
+    let loadOct8neScript = function (onLoaded) {
+        var licenseId = _options.licenseId;
+        var baseUrl = _options.baseUrl;
+        var server = _options.server;
+        var locale = document.querySelector('html').lang;
+        var isEu = server.includes('-eu');
+        var srcStaticPart = isEu ? "static-eu.oct8ne.com" : "static.oct8ne.com";
+        var src = (document.location.protocol == "https:" ? "https://" : "http://") + srcStaticPart + "/api/v2/oct8ne.js?" + (Math.round(new Date().getTime() / 86400000));
+        _options.srcStaticPart = srcStaticPart;
+        _options.locale = locale;
+        // For debugging purposes - remove when done =====================================
+        //actualServer = "localhost:44348/";
+        //src = (document.location.protocol == "https:" ? "https://" : "http://") + "localhost:44348/api/source/js/api/v2/2.3/debug/oct8ne-api-V2.3.js?" + (Math.round(new Date().getTime() / 86400000));
+        // For debugging purposes - remove when done =====================================
+
+        if (!licenseId) {
+            console.error('Warning: No Oct8ne License ID is defined. Please configure it in the apps admin');
+            return;
+        }
+
+        var oct8ne = document.createElement("script");
+        oct8ne.type = "text/javascript";
+        oct8ne.async = true;
+        oct8ne.id = 'vtexOct8neScript';
+        oct8ne.platform = "vtexio";
+        oct8ne.apiVersion = "2.4";
+        oct8ne.server = server;
+        oct8ne.license = licenseId;
+        oct8ne.locale = locale;
+        oct8ne.baseUrl = baseUrl;
+        oct8ne.src = src;
+        oct8ne.options = { vtexioInfo: {} };
+        oct8ne.checkoutUrl = document.location.origin + '/checkout/#/cart';
+
+        var s = document.getElementsByTagName("script")[0];
+        s.parentNode.insertBefore(oct8ne, s);
+        window.oct8ne = oct8ne;
+        // Callback to know when the oct8ne script is loaded
+        var oct8neScript = document.getElementById('vtexOct8neScript');
+        oct8neScript.onload = onLoaded;
+        oct8neScript.onerror = () => { console.error('Oct8ne script could not be loaded'); };
+        window.oct8neScriptInserted = true;
+    };
+
+    initialize();
+};
