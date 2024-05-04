@@ -1,0 +1,184 @@
+body {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-color: #f0f0f0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+}
+
+.container {
+  max-width: 400px;
+  width: 90%;
+}
+
+.form {
+  background-color: #fff;
+
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+h2 {
+  text-align: center;
+}
+
+label,
+input,
+textarea,
+button {
+  display: block;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+button {
+  background-color: #245399;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 10px;
+  cursor: pointer;
+}
+
+/* Estilos adicionales para dispositivos móviles */
+@media only screen and (max-width: 600px) {
+  .container {
+    width: 100%;
+  }
+}
+body {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-color: #f0f0f0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+}
+
+.container {
+  max-width: 400px;
+  width: 90%;
+}
+
+.form {
+  background-color: #fff;
+
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+h2 {
+  text-align: center;
+}
+
+label,
+input,
+textarea,
+button {
+  display: block;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+button {
+  background-color: #fdda24;
+  color: #000000;
+  margin-top: 50px;
+  border-radius: 20px;
+  padding: 15px;
+  font-weight: bold;
+  margin-bottom: 50px;
+  cursor: pointer;
+}
+
+/* Estilos adicionales para dispositivos móviles */
+@media only screen and (max-width: 600px) {
+  .container {
+    width: 100%;
+  }
+}
+
+.input-with-icon {
+  display: flex;
+  align-items: center;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  padding: 10px;
+
+  padding-right: 0px;
+  width: 100%;
+  border: 0;
+  border-bottom: 2px solid yellow;
+}
+
+svg {
+  fill: #999;
+  margin-right: 10px;
+  width: 24px;
+  height: 24px;
+}
+
+input {
+  border: none;
+  outline: none;
+  flex: 1;
+  height: 100%;
+  margin-top: 10;
+  font-size: 16px;
+}
+P.PanelControlTitleStyle {
+  font-family: verdana;
+  font-size: 12px;
+  font-weight: bold;
+  text-align: center;
+}
+
+/* Este elemento debe tener "position: relative" */
+div#is-relative {
+  max-width: 420px;
+  position: relative;
+}
+
+/* El icono debe ser "position: absolute"
+ * Ademas le damos un "display: block" y lo posicionamos */
+#icon {
+  position: absolute;
+  display: block;
+  bottom: 0.5rem;
+  left: 1rem;
+  color: #999;
+  user-select: none;
+  cursor: pointer;
+}
+input.input {
+  padding-left: 2.5rem;
+}
+
+.input-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.bonito {
+  padding: 0;
+  height: 40px;
+  text-align: center;
+  font-size: 15px;
+  margin: 5px;
+  border: 2px solid #ccc;
+  border-radius: 5px;
+  outline: none;
+}
+
+.bonito:focus {
+  border-color: #007bff;
+}

